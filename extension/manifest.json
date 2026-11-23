@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "grepo",
+  "version": "3.0.0",
+  "description": "本地索引你的 GitHub star 与 fork，毫秒级检索、个人备注、地址栏秒搜、联动预览抽屉、技术栈星图与侧边栏相似推荐，数据只存在你自己的浏览器里。",
+  "minimum_chrome_version": "114",
+  "action": {
+    "default_title": "grepo — 搜索我的仓库",
+    "default_icon": {
+      "16": "assets/icons/16.png",
+      "32": "assets/icons/32.png",
+      "48": "assets/icons/48.png",
+      "128": "assets/icons/128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "omnibox": {
+    "keyword": "gr"
+  },
+  "side_panel": {
+    "default_path": "pages/sidepanel/sidepanel.html"
+  },
+  "commands": {
+    "open-grepo": {
+      "suggested_key": {
+        "default": "Alt+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "打开或切换到 grepo 仓库索引页"
+    },
+    "open-sidepanel": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Command+Shift+E"
+      },
+      "description": "打开 grepo 侧边栏（查看当前仓库备注与相似收藏）"
+    }
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "sidePanel",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://github.com/*"
+  ],
+  "optional_host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ],
+  "icons": {
+    "16": "assets/icons/16.png",
+    "32": "assets/icons/32.png",
+    "48": "assets/icons/48.png",
+    "128": "assets/icons/128.png"
+  }
+}

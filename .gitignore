@@ -1,0 +1,24 @@
+# macOS / OS metadata
+.DS_Store
+._*
+
+# Logs
+*.log
+
+# Build / Chrome Web Store package artifacts
+dist/
+*.crx
+*.pem
+
+# Generated synthetic test fixtures (regenerate via `npm run test:fixture`)
+tests/repos*.json
+tests/result.json
+
+# Local inspection caches & temporary screenshots
+.taste-skill/
+ui-*.png
+
+# Node / Python caches
+node_modules/
+__pycache__/
+*.pyc

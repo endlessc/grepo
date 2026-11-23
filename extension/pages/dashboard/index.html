@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>grepo</title>
+<link rel="icon" type="image/png" href="../../assets/icons/32.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- 首次配置引导 -->
+<section id="setup" class="setup hidden">
+  <div class="setup-inner setup-hero-grid">
+    <div class="setup-card">
+      <div class="setup-brand-row">
+        <div class="brand-logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 22 22" width="26" height="26" fill="none">
+            <rect x="1" y="1" width="20" height="20" rx="5.5" fill="currentColor"/>
+            <path d="M6 7.1h10M6 11h10M6 14.9h5.4"
+                  stroke="var(--logo-stroke, #ffffff)" stroke-width="1.6" stroke-linecap="round" opacity="0.94"/>
+            <circle class="mark-dot" cx="15.6" cy="14.9" r="1.55"/>
+          </svg>
+        </div>
+        <span class="setup-brand-name">grepo</span>
+        <span class="setup-version-pill">v3.0 Cockpit</span>
+      </div>
+      <h2 class="setup-title">连接你的 GitHub</h2>
+      <p class="setup-lead">收藏在 GitHub 的几千个仓库，总在需要时想不起名字。grepo 将它们变成一份毫秒级检索的本地安全指挥舱。</p>
+
+      <label class="field">
+        <span class="field-label">GitHub Token</span>
+        <div class="token-input-wrap">
+          <input id="tokenInput" type="password" placeholder="ghp_… 或 github_pat_…"
+                 autocomplete="off" spellcheck="false">
+          <button type="button" id="tokenToggle" class="token-toggle" aria-label="显示 Token" title="显示 / 隐藏 Token">显示</button>
+        </div>
+      </label>
+
+      <div class="setup-note">
+        <div class="note-header">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor">
+            <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm9-3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM6.75 8a.75.75 0 0 0 0 1.5h.75v2.25a.75.75 0 0 0 1.5 0V8.75A.75.75 0 0 0 8.25 8h-1.5z"/>
+          </svg>
+          <span>权限与隐私保障</span>
+        </div>
+        <p>在 <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">github.com/settings/tokens/new</a> 生成，勾选 <code>public_repo</code> 即可读取公开 star 与 fork；需覆盖私有仓库再勾 <code>repo</code>。Token 仅保存在本机浏览器扩展存储中，绝不上传第三方服务器。</p>
+      </div>
+
+      <div class="setup-actions">
+        <button id="saveAndSync" class="btn btn-primary">保存并开始同步</button>
+      </div>
+      <p class="err hidden" id="setupErr"></p>
+    </div>
+
+    <aside class="setup-showcase" aria-hidden="true">
+      <div class="showcase-head">
+        <span class="showcase-dot"></span>
+        <span>LOCAL 32-SHARD ENGINE</span>
+        <span class="showcase-badge">&lt; 5ms</span>
+      </div>
+      <div class="showcase-query">
+        <code>lang:rust OR #llm stars:&gt;10k</code>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="showcase-features">
+        <div class="showcase-tile">
+          <strong>极速本地索引</strong>
+          <span>32 分片增量落盘，支持容错拼写、README 全文预热与 Star Lists 双向同步</span>
+        </div>
+        <div class="showcase-tile">
+          <strong>联动抽屉与命令面板</strong>
+          <span>Space 右侧联动预览、↑/↓ 连续阅览、⌘K 全局命令与 Bento 卡片视图</span>
+        </div>
+        <div class="showcase-tile">
+          <strong>GitHub DNA 与星图</strong>
+          <span>365 天收藏热力矩阵、技术栈交互星图、Release 版本雷达与 404 巡检</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- 主界面 -->
+<section id="app" class="hidden">
+  <header class="shell">
+    <div class="inner">
+      <div class="brand-row">
+        <div class="brand-title-wrap">
+          <div class="brand-logo-mark" aria-hidden="true">
+            <svg viewBox="0 0 22 22" width="22" height="22" fill="none">
+              <rect x="1" y="1" width="20" height="20" rx="5.5" fill="currentColor"/>
+              <path d="M6 7.1h10M6 11h10M6 14.9h5.4"
+                    stroke="var(--logo-stroke, #ffffff)" stroke-width="1.6" stroke-linecap="round" opacity="0.94"/>
+              <circle class="mark-dot" cx="15.6" cy="14.9" r="1.55"/>
+            </svg>
+          </div>
+          <h1 class="brand">grepo</h1>
+          <div class="view-pick seg-group" id="viewPick" role="tablist" aria-label="数据视图">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-view="mine" class="on" role="tab" aria-selected="true">
+              <svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
+              <span class="view-label-full">我的收藏</span>
+              <span class="view-label-short">收藏</span>
+            </button>
+            <button type="button" data-view="trend" role="tab" aria-selected="false">
+              <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5l4-5 3.5 3 4.5-8M11.5 3.5h3v3"/></svg>
+              <span class="view-label-full">开源趋势</span>
+              <span class="view-label-short">趋势</span>
+            </button>
+          </div>
+        </div>
+        <div class="brand-meta">
+          <div class="index-telemetry" title="本地索引就绪状态">
+            <span class="status-beacon"></span>
+            <span class="index-count" id="indexCount">—</span>
+          </div>
+          <span class="sync-state" id="syncState"></span>
+          <div class="theme-menu" id="themeMenu">
+            <button type="button" class="btn btn-icon theme-menu-btn" id="themeMenuBtn"
+                    aria-haspopup="true" aria-expanded="false" title="切换配色主题" aria-label="切换配色主题">
+              <span class="swatch-mini" id="themeMenuSwatch" data-theme="atelier"></span>
+            </button>
+            <div class="theme-popover hidden" id="themePopover">
+              <div class="theme-popover-head">配色主题</div>
+              <div class="theme-pick" id="themePick" role="radiogroup" aria-label="配色主题">
+                <button type="button" class="swatch" data-theme="atelier" role="radio"
+                        aria-checked="true" title="工坊精工 (Atelier)" aria-label="工坊精工"></button>
+                <button type="button" class="swatch" data-theme="paper" role="radio"
+                        aria-checked="false" title="纸面索引" aria-label="纸面索引"></button>
+                <button type="button" class="swatch" data-theme="porcelain" role="radio"
+                        aria-checked="false" title="素瓷" aria-label="素瓷"></button>
+                <button type="button" class="swatch" data-theme="linen" role="radio"
+                        aria-checked="false" title="素麻" aria-label="素麻"></button>
+                <button type="button" class="swatch" data-theme="celadon" role="radio"
+                        aria-checked="false" title="青瓷" aria-label="青瓷"></button>
+                <button type="button" class="swatch" data-theme="obsidian" role="radio"
+                        aria-checked="false" title="墨夜暗色 (Obsidian)" aria-label="墨夜暗色"></button>
+                <button type="button" class="swatch" data-theme="aurora" role="radio"
+                        aria-checked="false" title="极光深蓝 (Aurora)" aria-label="极光深蓝"></button>
+                <button type="button" class="swatch" data-theme="cyber" role="radio"
+                        aria-checked="false" title="终端赛博 (Cyber)" aria-label="终端赛博"></button>
+              </div>
+            </div>
+          </div>
+          <button id="syncBtn" class="btn btn-sync" title="增量同步（按住 ⇧ 点按可全量重建）">同步</button>
+          <button type="button" id="cmdPaletteBtn" class="btn btn-cmd-trigger" title="打开全局命令面板 (⌘K / Ctrl+K)" aria-label="命令面板">
+            <kbd data-os-cmd-k="1">⌘K</kbd>
+          </button>
+          <button type="button" id="insightsBtn" class="btn btn-icon" title="资产洞察、热力图、技术栈星图与版本雷达 (i)" aria-label="资产洞察">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 13V8.5M6.2 13V5.5M9.8 13V7M13.5 13V3"/>
+            </svg>
+          </button>
+          <button type="button" id="settingsBtn" class="btn btn-icon" title="外观、备份、AI、预热与账号设置" aria-label="设置">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.25"/>
+              <path d="M13.3 9.7a1.1 1.1 0 0 0 .22 1.21l.04.04a1.33 1.33 0 1 1-1.88 1.88l-.04-.04a1.1 1.1 0 0 0-1.21-.22 1.1 1.1 0 0 0-.67 1.01v.11a1.33 1.33 0 1 1-2.66 0v-.06a1.1 1.1 0 0 0-.72-1.01 1.1 1.1 0 0 0-1.21.22l-.04.04a1.33 1.33 0 1 1-1.88-1.88l.04-.04a1.1 1.1 0 0 0 .22-1.21 1.1 1.1 0 0 0-1.01-.67h-.11a1.33 1.33 0 1 1 0-2.66h.06a1.1 1.1 0 0 0 1.01-.72 1.1 1.1 0 0 0-.22-1.21l-.04-.04a1.33 1.33 0 1 1 1.88-1.88l.04.04a1.1 1.1 0 0 0 1.21.22h.05a1.1 1.1 0 0 0 .67-1.01v-.11a1.33 1.33 0 1 1 2.66 0v.06a1.1 1.1 0 0 0 .67 1.01 1.1 1.1 0 0 0 1.21-.22l.04-.04a1.33 1.33 0 1 1 1.88 1.88l-.04.04a1.1 1.1 0 0 0-.22 1.21v.05a1.1 1.1 0 0 0 1.01.67h.11a1.33 1.33 0 1 1 0 2.66h-.06a1.1 1.1 0 0 0-1.01.67z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <div class="searchwrap" id="searchWrap">
+          <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="6.8" cy="6.8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <line x1="10.4" y1="10.4" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <input id="q" type="search" placeholder="搜索仓库、描述、#标签，或输入 lang: / stars:"
+                 autocomplete="off" spellcheck="false" autofocus>
+          <div class="search-trailing">
+            <div class="search-indicator" id="searchIndicator" aria-hidden="true" title="正在就绪/搜索"></div>
+            <button type="button" id="searchClear" class="search-clear hidden" aria-label="清空搜索" title="清空搜索 (Esc)">×</button>
+            <div class="scope-pill seg-group" id="scopePill" role="radiogroup" aria-label="搜索范围">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button type="button" class="scope-btn on" data-scope="local" role="radio" aria-checked="true" title="仅搜索本地索引库 (⌥S / Tab)">本地</button>
+              <button type="button" class="scope-btn" data-scope="github" role="radio" aria-checked="false" title="搜索整个 GitHub 公开仓库 (⌥S / Tab)">GitHub</button>
+            </div>
+            <kbd id="searchKbd">/</kbd>
+          </div>
+          <!-- 输入时弹出的建议面板：本地匹配 + DSL 补全 + 搜索全站入口 -->
+          <div class="suggest hidden" id="suggest"></div>
+        </div>
+
+        <!-- 自定义语言下拉筛选 -->
+        <div class="custom-select" id="langSelect">
+          <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false" title="按编程语言筛选">
+            <svg class="select-prefix-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M5 4.5L1.5 8 5 11.5M11 4.5L14.5 8 11 11.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="select-label">全部语言</span>
+            <svg class="select-chevron" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+              <path d="M3.75 6.25L8 10.5l4.25-4.25" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="select-dropdown hidden" role="listbox" tabindex="-1"></div>
+          <select id="lang" class="hidden-select"><option value="">全部语言</option></select>
+        </div>
+
+        <!-- 自定义排序下拉筛选 -->
+        <div class="custom-select" id="sortSelect">
+          <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false" title="排序方式">
+            <svg class="select-prefix-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h4" stroke-linecap="round"/>
+            </svg>
+            <span class="select-label">最近星标</span>
+            <svg class="select-chevron" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+              <path d="M3.75 6.25L8 10.5l4.25-4.25" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="select-dropdown hidden" role="listbox" tabindex="-1"></div>
+          <select id="sort" class="hidden-select">
+            <option value="starred">最近星标</option>
+            <option value="stars">星标最多</option>
+            <option value="name">名称</option>
+            <option value="pushed">最近提交</option>
+          </select>
+        </div>
+
+        <button type="button" id="trendRefresh" class="btn btn-sync hidden" title="刷新今日 GitHub 趋势">
+          <span>刷新</span>
+        </button>
+      </div>
+
+      <div class="sub">
+        <div class="sub-left">
+          <nav class="tabs seg-group" id="tabs">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button data-kind="" class="on">全部<span class="n"></span></button>
+            <button data-kind="star">星标<span class="n"></span></button>
+            <button data-kind="fork">Fork<span class="n"></span></button>
+            <button data-kind="owned">自建<span class="n"></span></button>
+          </nav>
+
+          <div class="period-pick seg-group hidden" id="periodPick" role="tablist" aria-label="时间范围">
+            <span class="seg-thumb" aria-hidden="true"></span>
+            <button type="button" data-period="day" class="on" role="tab" aria-selected="true">今日</button>
+            <button type="button" data-period="week" role="tab" aria-selected="false">本周</button>
+            <button type="button" data-period="month" role="tab" aria-selected="false">本月</button>
+          </div>
+
+          <span id="stat"></span>
+          <button type="button" id="saveViewBtn" class="link-btn hidden" title="将当前筛选条件保存为快捷视图">+ 保存视图</button>
+          <button type="button" id="scopeBack" class="link-btn hidden">返回本地收藏</button>
+          <span id="trendNote" class="trend-note hidden"></span>
+        </div>
+        <div class="sub-right">
+          <div class="layout-pick" id="layoutPick" role="radiogroup" aria-label="布局视图">
+            <button type="button" class="layout-btn on" data-layout="list" role="radio" aria-checked="true" title="列表视图">
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>
+            </button>
+            <button type="button" class="layout-btn" data-layout="grid" role="radio" aria-checked="false" title="Bento 卡片网格视图">
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+            </button>
+          </div>
+          <button type="button" id="peekToggleBtn" class="sub-tool-btn" title="切换右侧联动预览抽屉 (Space / p)">预览抽屉</button>
+          <button type="button" id="tagsMgrBtn" class="sub-tool-btn" title="管理全部自定义标签、合并重命名与筛选未打标仓库">标签管理</button>
+          <button type="button" id="batchToggleBtn" class="sub-tool-btn" title="进入批量整理模式（批量打标、取消 Star、AI 对比）">批量</button>
+          <label class="check">
+            <input type="checkbox" id="showArchived">
+            <span>包含已归档</span>
+          </label>
+        </div>
+      </div>
+      <!-- 解析后的彩色筛选胶囊条 -->
+      <div class="filter-pills hidden" id="filterPills" aria-label="生效筛选条件"></div>
+      <div class="saved-views hidden" id="savedViewsBar" aria-label="已保存的快捷视图"></div>
+    </div>
+    <div class="progress hidden" id="progressWrap"><div id="progressBar"></div></div>
+  </header>
+
+  <main id="list"></main>
+  <div id="sentinel"></div>
+
+  <!-- 右侧联动预览抽屉（QuickLook Split Drawer） -->
+  <aside id="peekDrawer" class="peek-drawer hidden" aria-label="仓库联动预览抽屉">
+    <div class="peek-head">
+      <div class="peek-title-wrap">
+        <span class="peek-owner" id="peekOwner"></span>
+        <h3 class="peek-title" id="peekTitle">选择一个仓库开始预览</h3>
+      </div>
+      <div class="peek-head-acts">
+        <button type="button" class="btn btn-xs" id="peekFullBtn" title="在完整弹窗中打开">全屏</button>
+        <button type="button" class="dialog-x" id="peekCloseBtn" aria-label="关闭预览抽屉">×</button>
+      </div>
+    </div>
+    <div class="peek-body">
+      <p class="peek-desc" id="peekDesc">使用 ↑ / ↓ 或 j / k 在左侧列表中快速切换，右侧将毫秒级同步预览元数据、备注与 README。</p>
+      <div class="detail-personal-note hidden" id="peekNote"></div>
+      <div class="peek-meta" id="peekMeta"></div>
+      <div class="peek-tags" id="peekTags"></div>
+      <div class="peek-quick-links" id="peekQuickLinks"></div>
+      <div class="peek-release hidden" id="peekRelease"></div>
+      <div class="peek-actions">
+        <button type="button" class="btn btn-star" id="peekStarBtn"><span>Star</span></button>
+        <button type="button" class="btn" id="peekPinBtn" title="置顶追踪此仓库的 Release 更新">追踪版本</button>
+        <button type="button" class="btn btn-primary" id="peekOpenBtn">GitHub ↗</button>
+      </div>
+      <div class="peek-readme-wrap">
+        <div class="peek-readme-head">
+          <span>README 速览</span>
+          <span class="peek-readme-hint" id="peekReadmeHint">↑/↓ 切换下一条</span>
+        </div>
+        <div class="detail-readme-body peek-readme" id="peekReadme"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 批量整理浮岛 -->
+  <div id="batchBar" class="batch-bar hidden" role="toolbar" aria-label="批量操作栏">
+    <span class="batch-count" id="batchCount">已选 0 项</span>
+    <button type="button" class="btn" id="batchSelectAll">全选当前</button>
+    <button type="button" class="btn" id="batchTagBtn">批量打标</button>
+    <button type="button" class="btn" id="batchAiTagBtn" title="使用本地 Ollama 或自有 API 为选中仓库生成中文备注与标签">AI 整理</button>
+    <button type="button" class="btn" id="batchCompareBtn" title="选择 2–4 个同类仓库生成选型对比表">AI 对比</button>
+    <button type="button" class="btn btn-danger-ghost" id="batchUnstarBtn">批量取消 Star</button>
+    <button type="button" class="btn btn-primary" id="batchExitBtn">完成</button>
+  </div>
+
+  <footer class="foot">
+    <div class="inner">
+      <span><kbd data-key="/">/</kbd> 搜索</span>
+      <span><kbd data-key="Meta+k" data-os-cmd-k="1">⌘K</kbd> 命令</span>
+      <span><kbd data-key="ArrowUp">↑</kbd><kbd data-key="ArrowDown">↓</kbd> 移动</span>
+      <span><kbd data-key=" ">Space</kbd> 预览</span>
+      <span><kbd data-key="Enter">↵</kbd> 打开</span>
+      <span><kbd data-key="Meta+Enter" data-os-cmd="1">⌘↵</kbd> 复制</span>
+      <span><kbd data-key="s">s</kbd> Star</span>
+      <span data-only="local-mine"><kbd data-key="t">t</kbd> 标签</span>
+      <span data-only="mine"><kbd data-key="Alt+s" data-os-alt="1">⌥s</kbd> 范围</span>
+      <span><kbd data-key="Escape">esc</kbd> 清空</span>
+    </div>
+  </footer>
+</section>
+
+<!-- 全局 ⌘K 命令面板 -->
+<div id="cmdDialog" class="dialog cmd-dialog hidden" role="dialog" aria-modal="true" aria-label="全局命令面板">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="cmd-card">
+    <div class="cmd-input-row">
+      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <circle cx="6.8" cy="6.8" r="4.6"/><line x1="10.4" y1="10.4" x2="14" y2="14" stroke-linecap="round"/>
+      </svg>
+      <input id="cmdInput" type="search" placeholder="输入命令、主题、快捷视图、标签或仓库名…" autocomplete="off" spellcheck="false">
+      <kbd>ESC</kbd>
+    </div>
+    <div class="cmd-list" id="cmdList" role="listbox"></div>
+    <div class="cmd-foot" id="cmdFoot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
+      <span><kbd>↵</kbd> 执行</span>
+      <span><kbd>ESC</kbd> 关闭</span>
+    </div>
+  </div>
+</div>
+
+<!-- 设置与账号管理 -->
+<div id="settingsDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card dialog-settings">
+    <div class="detail-head">
+      <div class="detail-title-wrap">
+        <h2 class="dialog-title" id="settingsTitle">设置与账号</h2>
+        <p class="dialog-sub">配色主题、布局密度、README 离线预热与 GitHub Token 管理</p>
+      </div>
+      <button type="button" class="dialog-x" id="settingsClose" aria-label="关闭">×</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">配色主题</div>
+      <div class="settings-themes" id="settingsThemes" role="radiogroup" aria-label="选择配色主题">
+        <button type="button" class="theme-chip" data-theme="atelier" role="radio" aria-checked="true">
+          <span class="swatch-mini" data-theme="atelier"></span><span>工坊精工</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="paper" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="paper"></span><span>纸面索引</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="porcelain" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="porcelain"></span><span>素瓷</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="linen" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="linen"></span><span>素麻</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="celadon" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="celadon"></span><span>青瓷</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="obsidian" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="obsidian"></span><span>墨夜暗色</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="aurora" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="aurora"></span><span>极光深蓝</span>
+        </button>
+        <button type="button" class="theme-chip" data-theme="cyber" role="radio" aria-checked="false">
+          <span class="swatch-mini" data-theme="cyber"></span><span>终端赛博</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-row-inline">
+        <div>
+          <div class="settings-label">列表密度</div>
+          <div class="settings-hint">调整每屏显示的仓库数量</div>
+        </div>
+        <div class="density-pick" id="densityPick" role="radiogroup" aria-label="列表密度">
+          <button type="button" data-density="comfortable" class="on" role="radio" aria-checked="true">舒适</button>
+          <button type="button" data-density="compact" role="radio" aria-checked="false">紧凑</button>
+        </div>
+      </div>
+      <div class="settings-row-inline" style="margin-top:12px;">
+        <div>
+          <div class="settings-label">Git Clone 格式</div>
+          <div class="settings-hint">详情页与侧边栏一键复制命令协议</div>
+        </div>
+        <div class="density-pick" id="cloneModePick" role="radiogroup" aria-label="Clone 协议">
+          <button type="button" data-clone="https" class="on" role="radio" aria-checked="true">HTTPS</button>
+          <button type="button" data-clone="ssh" role="radio" aria-checked="false">SSH</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">索引同步 &amp; GitHub Lists &amp; 版本雷达</div>
+      <p class="settings-hint" id="settingsSyncInfo">尚未同步</p>
+      <div class="settings-btn-row">
+        <button type="button" class="btn" id="settingsIncrSync">增量同步</button>
+        <button type="button" class="btn" id="settingsFullSync">全量重建索引</button>
+        <button type="button" class="btn" id="pullListsBtn" title="通过 GitHub GraphQL 拉取原生 Star Lists 并合并为本地 #标签">导入 GitHub Lists</button>
+        <button type="button" class="btn" id="pushListsBtn" title="通过 GitHub GraphQL 将本地 #标签同步创建为 GitHub Star Lists（上限 32 个）">推送标签到 Lists</button>
+        <button type="button" class="btn" id="settingsCheckReleasesBtn" title="检查所有置顶追踪仓库的最新 Release 版本">刷新版本雷达</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">README 离线全文预热（可控速静默缓存）</div>
+      <p class="settings-hint" id="prewarmStatus">已缓存 0 份 README · 开启后可对高星与已打标仓库后台建全文索引</p>
+      <div class="prewarm-progress hidden" id="prewarmProgress"><div class="prewarm-bar" id="prewarmBar"></div></div>
+      <div class="settings-btn-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary" id="prewarmStartBtn">后台预热前 120 个</button>
+        <button type="button" class="btn hidden" id="prewarmStopBtn">暂停预热</button>
+        <button type="button" class="btn" id="prewarmClearBtn">清空 README 缓存</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">快捷外链工具</div>
+      <p class="settings-hint">每行一项，格式为 <code>名称 | 链接模板</code>（支持 <code>{full_name}</code>）</p>
+      <textarea id="settingsQuickLinks" class="settings-textarea" rows="3" spellcheck="false"></textarea>
+      <div class="settings-btn-row" style="margin-top:8px;">
+        <button type="button" class="btn" id="settingsSaveLinks">保存外链</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">数据备份与导出</div>
+      <p class="settings-hint">完整保留你的自定义标签、中文备注、置顶追踪与视图配置</p>
+      <div class="settings-btn-row">
+        <button type="button" class="btn" id="exportJsonBtn">导出 JSON 备份</button>
+        <button type="button" class="btn" id="importJsonBtn">导入 JSON 恢复</button>
+        <input type="file" id="importJsonFile" accept="application/json,.json" class="hidden">
+        <button type="button" class="btn" id="exportMdBtn">导出 Awesome MD</button>
+        <button type="button" class="btn" id="exportCsvBtn">导出 CSV</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-row-inline">
+        <div>
+          <div class="settings-label">AI 助手（可选 · 仅直连本机或自有密钥）</div>
+          <div class="settings-hint" id="aiStatus">未配置 · 支持自动中文备注、语义检索与选型对比</div>
+        </div>
+        <div class="density-pick" id="aiModePick" role="radiogroup" aria-label="AI 提供方式">
+          <button type="button" data-aimode="ollama" class="on" role="radio" aria-checked="true">Ollama</button>
+          <button type="button" data-aimode="openai" role="radio" aria-checked="false">OpenAI 兼容</button>
+        </div>
+      </div>
+      <div class="settings-ai-grid">
+        <input id="aiBaseUrl" type="url" placeholder="接口地址，如 http://localhost:11434/v1" autocomplete="off" spellcheck="false">
+        <input id="aiModel" type="text" placeholder="模型名，如 qwen2.5:7b 或 gpt-4o-mini" autocomplete="off" spellcheck="false">
+        <input id="aiApiKey" type="password" placeholder="API Key（本地 Ollama 可留空）" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="settings-btn-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary" id="aiSaveBtn">保存 AI 配置</button>
+        <button type="button" class="btn" id="aiTestBtn">测试连接</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">GitHub Token</div>
+      <p class="settings-hint" id="settingsTokenStatus">已连接</p>
+      <div class="settings-token-row">
+        <input id="settingsTokenInput" type="password" placeholder="粘贴新的 ghp_… 或 github_pat_…" autocomplete="off" spellcheck="false">
+        <button type="button" class="btn btn-primary" id="settingsTokenSave">更新</button>
+      </div>
+      <div class="settings-footer-row">
+        <button type="button" class="btn btn-danger-ghost" id="settingsTokenClear">清除 Token 并重新配置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 标签管理中心 -->
+<div id="tagManagerDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="tagMgrTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card dialog-medium">
+    <div class="detail-head">
+      <div class="detail-title-wrap">
+        <h2 class="dialog-title" id="tagMgrTitle">标签管理中心</h2>
+        <p class="dialog-sub">点击标签筛选，或重命名、合并与清理无用标签</p>
+      </div>
+      <button type="button" class="dialog-x" id="tagMgrClose" aria-label="关闭">×</button>
+    </div>
+    <div class="tag-mgr-bar">
+      <input id="tagMgrSearch" type="search" placeholder="过滤标签…" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn" id="tagMgrUntaggedBtn">查看未打标仓库</button>
+    </div>
+    <div class="tag-mgr-sync-row">
+      <button type="button" class="btn" id="tagMgrPullLists">从 GitHub Lists 导入</button>
+      <button type="button" class="btn" id="tagMgrPushLists">推送标签到 GitHub Lists</button>
+    </div>
+    <div class="tag-mgr-list" id="tagMgrList"></div>
+  </div>
+</div>
+
+<!-- 资产洞察与 GitHub DNA 看板 + 技术栈星图 -->
+<div id="insightsDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="insightsTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card dialog-wide dialog-insights">
+    <div class="detail-head insights-head-bar">
+      <div class="detail-title-wrap">
+        <h2 class="dialog-title" id="insightsTitle">资产洞察 · GitHub DNA</h2>
+        <p class="dialog-sub">纯离线统计 · 点击任意热力格子、星团或维度即可直达对应仓库</p>
+      </div>
+      <div class="insights-head-right">
+        <div class="density-pick" id="insightsTabPick" role="tablist" aria-label="洞察视图">
+          <button type="button" data-itab="overview" class="on" role="tab" aria-selected="true">数据指挥舱</button>
+          <button type="button" data-itab="graph" role="tab" aria-selected="false">技术栈星图</button>
+        </div>
+        <button type="button" class="dialog-x" id="insightsClose" aria-label="关闭">×</button>
+      </div>
+    </div>
+
+    <!-- 面板 1：Bento 数据指挥舱 -->
+    <div class="insights-scroll" id="insightsOverviewPane">
+      <div class="insights-kpis" id="insightsKpis"></div>
+
+      <!-- 365 天收藏热力矩阵 -->
+      <div class="insights-section" id="insightsHeatmapWrap">
+        <div class="insights-section-head">
+          <span>365 天收藏活跃热力图</span>
+          <span class="insights-heatmap-summary" id="insightsHeatmapSummary"></span>
+        </div>
+        <div class="heatmap-box" id="insightsHeatmap"></div>
+      </div>
+
+      <!-- 重点库 Release 版本雷达 -->
+      <div class="insights-section" id="insightsRadarWrap">
+        <div class="insights-section-head">
+          <span>重点库版本发布雷达（置顶追踪）</span>
+          <button type="button" class="link-btn" id="checkReleasesBtn">检查最新 Release</button>
+        </div>
+        <div class="radar-list" id="insightsRadarList"></div>
+      </div>
+
+      <div class="insights-section">
+        <div class="insights-section-head">
+          <span>健康度与动态体检</span>
+          <button type="button" class="link-btn" id="scan404Btn" title="在线探测旧收藏是否已删库或 404">巡检 404 失联库</button>
+        </div>
+        <div class="insights-health" id="insightsHealth"></div>
+      </div>
+
+      <div class="insights-section hidden" id="insightsVanishedWrap">
+        <div class="insights-section-head">
+          <span id="insightsVanishedTitle">已发现失联 / 404 仓库</span>
+          <button type="button" class="link-btn" id="clearVanishedBtn">清空失联记录</button>
+        </div>
+        <div class="insights-vanished-list" id="insightsVanishedList"></div>
+      </div>
+
+      <!-- 语言彩色堆叠条 + 双列统计 -->
+      <div class="insights-section">
+        <div class="insights-section-head"><span>技术栈语言彩带</span></div>
+        <div class="lang-ribbon" id="insightsLangBar"></div>
+      </div>
+
+      <div class="insights-two-col">
+        <div class="insights-section">
+          <div class="insights-section-head"><span>编程语言分布 (Top 8)</span></div>
+          <div class="insights-bars" id="insightsLangs"></div>
+        </div>
+        <div class="insights-section">
+          <div class="insights-section-head"><span>历年收藏节奏</span></div>
+          <div class="insights-bars" id="insightsYears"></div>
+        </div>
+      </div>
+      <div class="insights-section">
+        <div class="insights-section-head"><span>最常收藏的作者 / 组织</span></div>
+        <div class="insights-owners" id="insightsOwners"></div>
+      </div>
+      <div class="insights-section">
+        <div class="insights-section-head">
+          <span>随机漫步 · 每日拾遗（拯救收藏夹吃灰）</span>
+          <button type="button" class="link-btn" id="insightsRandomRefresh">换一批</button>
+        </div>
+        <div class="insights-random" id="insightsRandomList"></div>
+      </div>
+    </div>
+
+    <!-- 面板 2：离线交互式技术栈星图（Canvas 2D） -->
+    <div class="insights-graph-pane hidden" id="insightsGraphPane">
+      <div class="graph-toolbar">
+        <span class="graph-stats" id="graphStats">加载星图中…</span>
+        <div class="graph-controls">
+          <select id="graphFilterLang" class="graph-select" aria-label="按语言聚焦星图">
+            <option value="">全部核心技术栈</option>
+          </select>
+          <button type="button" class="btn btn-xs" id="graphZoomIn" title="放大">+</button>
+          <button type="button" class="btn btn-xs" id="graphZoomOut" title="缩小">−</button>
+          <button type="button" class="btn btn-xs" id="graphReset" title="重置视角">重置</button>
+        </div>
+      </div>
+      <div class="graph-stage">
+        <canvas id="constellationCanvas"></canvas>
+        <div class="graph-tooltip hidden" id="graphTooltip"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI 选型对比 / 语义检索结果弹窗 -->
+<div id="aiResultDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="aiResultTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card dialog-wide">
+    <div class="detail-head">
+      <div class="detail-title-wrap">
+        <h2 class="dialog-title" id="aiResultTitle">AI 分析结果</h2>
+        <p class="dialog-sub" id="aiResultSub"></p>
+      </div>
+      <button type="button" class="dialog-x" id="aiResultClose" aria-label="关闭">×</button>
+    </div>
+    <div class="detail-readme-body ai-result-body" id="aiResultBody"></div>
+  </div>
+</div>
+
+<!-- 标签与备注编辑 -->
+<div id="tagDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="tagTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card">
+    <h2 class="dialog-title" id="tagTitle">编辑标签与备注</h2>
+    <p class="dialog-repo" id="tagRepo"></p>
+    <label class="dialog-field">
+      <span>自定义标签（空格分隔，留空即删除）</span>
+      <input id="tagInput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="pdf-tool docs">
+    </label>
+    <div class="tag-suggestions hidden" id="tagSuggestions" aria-label="快速复用已有标签"></div>
+    <label class="dialog-field">
+      <span>个人中文备注（仅存本地，纳入毫秒搜索）</span>
+      <textarea id="noteInput" rows="3" placeholder="记录为什么收藏它、准备用在什么场景…"></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button type="button" class="btn dialog-action-left" id="tagAiSuggest" title="调用已配置的 Ollama / AI 自动生成中文备注与推荐标签">AI 生成</button>
+      <button type="button" class="btn" id="tagCancel">取消</button>
+      <button type="button" class="btn btn-primary" id="tagSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 仓库详情 -->
+<div id="repoDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="repoTitle">
+  <div class="dialog-backdrop" data-close="1"></div>
+  <div class="dialog-card dialog-wide">
+    <div class="detail-head">
+      <div class="detail-title-wrap">
+        <p class="detail-owner" id="repoOwner"></p>
+        <h2 class="dialog-title" id="repoTitle"></h2>
+      </div>
+      <button type="button" class="dialog-x" id="repoClose" aria-label="关闭">×</button>
+    </div>
+    <p class="detail-desc" id="repoDesc"></p>
+    <div class="detail-personal-note hidden" id="repoPersonalNote"></div>
+    <dl class="detail-grid" id="repoGrid"></dl>
+    <div class="detail-tags" id="repoTags"></div>
+    <div class="detail-quick-links" id="repoQuickLinks"></div>
+    <!-- 最新 Release 卡片 -->
+    <div class="detail-release hidden" id="repoReleaseWrap">
+      <div class="detail-release-head">
+        <span class="release-badge" id="repoReleaseTag"></span>
+        <span class="release-date" id="repoReleaseDate"></span>
+        <a class="link-btn" id="repoReleaseLink" target="_blank" rel="noopener noreferrer">查看 Release ↗</a>
+      </div>
+      <div class="detail-release-body" id="repoReleaseBody"></div>
+    </div>
+    <!-- 本地同类相似收藏 -->
+    <div class="detail-similar hidden" id="repoSimilarWrap">
+      <div class="detail-similar-head">
+        <span>本地同类相似收藏</span>
+        <button type="button" class="link-btn" id="repoSimilarCompareBtn" title="将当前仓库与前 3 个相似仓库送入 AI 生成选型对比表">一键 AI 对比</button>
+      </div>
+      <div class="detail-similar-list" id="repoSimilarList"></div>
+    </div>
+    <div class="detail-readme hidden" id="repoReadmeWrap">
+      <div class="detail-readme-head">
+        <span>README</span>
+        <a id="repoReadmeFull" target="_blank" rel="noopener">在 GitHub 查看完整版</a>
+      </div>
+      <div class="detail-readme-body" id="repoReadme"></div>
+    </div>
+    <div class="detail-actions">
+      <button type="button" class="btn btn-star" id="repoStarBtn" title="Star 这个仓库 (s)">
+        <svg class="star-icon" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M8 1.9l1.92 3.9 4.3.63-3.11 3.03.73 4.28L8 11.72l-3.84 2.02.73-4.28L1.78 6.43l4.3-.63z"/>
+        </svg>
+        <span>Star</span>
+      </button>
+      <button type="button" class="btn" id="repoPinBtn" title="置顶追踪最新 Release 版本">追踪版本</button>
+      <button type="button" class="btn btn-primary" id="repoOpen">在 GitHub 打开</button>
+      <button type="button" class="btn" id="repoCopy">复制链接</button>
+      <button type="button" class="btn" id="repoCopyClone" title="复制 git clone 命令">Clone</button>
+      <button type="button" class="btn" id="repoCopyMd" title="复制 Markdown 链接">MD</button>
+      <button type="button" class="btn" id="repoTagBtn">编辑标签</button>
+      <button type="button" class="btn" id="repoAiBtn" title="AI 一键生成中文用途解读与标签建议">AI 总结</button>
+      <span class="detail-note" id="repoNote"></span>
+    </div>
+  </div>
+</div>
+
+<!-- 全局轻量浮动 Toast 提示 -->
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script src="../../vendor/marked.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

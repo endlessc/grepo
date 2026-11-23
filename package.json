@@ -1,0 +1,20 @@
+{
+  "name": "grepo-chrome-extension",
+  "version": "3.0.0",
+  "license": "MIT",
+  "private": true,
+  "description": "Local 32-shard GitHub starred/forked repository search & knowledge cockpit (Chrome MV3 extension)",
+  "scripts": {
+    "check:syntax": "node --check extension/background/service-worker.js && node --check extension/pages/dashboard/app.js && node --check extension/pages/sidepanel/sidepanel.js",
+    "check:ids": "node tests/check-ids.mjs",
+    "check:themes": "node scripts/validate-themes.mjs",
+    "check:manifest": "node -e \"const fs=require('fs'),path=require('path'),m=JSON.parse(fs.readFileSync('extension/manifest.json','utf8')),paths=[m.background.service_worker,m.side_panel.default_path,...Object.values(m.icons),...Object.values(m.action.default_icon)];for(const p of paths){if(!fs.existsSync(path.join('extension',p)))throw new Error('Missing manifest asset: '+p);}console.log('✓ Manifest v'+m.version+' valid ('+paths.length+' entry assets verified)');\"",
+    "validate": "npm run check:manifest && npm run check:syntax && npm run check:ids && npm run check:themes",
+    "test:fixture": "node tests/gen.mjs",
+    "test:smoke": "node tests/smoke.mjs",
+    "test:search": "node tests/check-github-search.mjs",
+    "test:ux": "node tests/check-p0-ux.mjs && node tests/check-detail.mjs && node tests/check-tag-dialog.mjs && node tests/check-theme.mjs && node tests/check-readme-render.mjs",
+    "icons": "python3 scripts/make-icons.py",
+    "pack": "bash scripts/pack-extension.sh"
+  }
+}
